@@ -1,0 +1,456 @@
+// occlient project main.go
+package main
+
+import (
+	"crypto/md5"
+	"encoding/hex"
+	"flag"
+	"log"
+	"os"
+	"runtime"
+	"time"
+)
+
+func MD5(b []byte) string {
+	h := md5.New()
+	h.Write(b)
+	x := h.Sum(nil)
+	y := make([]byte, 32)
+	hex.Encode(y, x)
+	return string(y)
+}
+
+var sleep time.Duration
+
+func DateTime_YYYYMMDDHHMMSS() string {
+	return time.Now().Format("20060102150405")
+}
+
+func main() {
+	runtime.GOMAXPROCS(1000000)
+	addr := flag.String("addr", "127.0.0.1:5555", "message server address and port ,default 180.153.149.147:8443")
+	user := flag.Int("uid", 10000, "user login id,default 10000")
+	sec := flag.String("sec", "abc", "secrity key")
+	room := flag.Int("rid", 11111, "client type,default 11111")
+	c := flag.Int("c", 1, "concurrent number,default 1")
+	t := flag.Int("t", 1, "precent %t% second send a message ,default 1 s")
+	sleep = time.Duration(*t) * time.Second
+	flag.Parse()
+
+	for i := 1; i <= *c; i++ {
+		go doconnect(*addr, int32(*user)+int32(i), int32(*room), *sec)
+	}
+	select {}
+	os.Exit(0)
+}
+
+func doconnect(addr string, uid int32, room int32, key string) {
+	client := NewClient(addr, uid, room, key)
+	for {
+		ok := client.Handshake()
+		if ok {
+			ok = client.Join()
+			break
+		}
+		client.Logout()
+		log.Printf("Reconnect %+v", client)
+	}
+
+	//partten := "20060102150405"
+
+	for {
+		if client.IsLogin() {
+			client.SendMessage("Hello Openchat")
+			time.Sleep(sleep)
+		} else {
+			client.Logout()
+			doconnect(addr, uid, room, key)
+		}
+	}
+	//defer client.Logout()
+	//defer client.Logout()
+}
+
+func checkError(msg string, err error) {
+	if err != nil {
+		log.Println(msg, err)
+	}
+}
+
+
+// occlient
+package main
+
+import (
+	"bytes"
+	"encoding/binary"
+	"io"
+	"log"
+	"net"
+	"time"
+)
+
+type Client struct {
+	Address  string
+	UserId   int32
+	RoomId   int32
+	SecKey   string
+	sequence int32
+	logined  bool
+	session  net.Conn
+	nextInt  func() int32
+}
+
+func NewClient(addr string, user int32, room int32, key string) *Client {
+	c := new(Client)
+	c.sequence = 0
+	c.Address = addr
+	c.UserId = user
+	c.RoomId = room
+	c.SecKey = key
+	c.logined = false
+	c.nextInt = intSeq()
+	return c
+}
+
+func intSeq() func() int32 {
+	var i int32 = 0
+	return func() int32 {
+		i += 1
+		return i
+	}
+}
+
+func (c *Client) IsLogin() bool {
+	return c.logined
+}
+
+func (c *Client) Logout() {
+	c.logined = false
+	if c.session != nil {
+		c.session.Close()
+	}
+}
+
+func readPacket(conn net.Conn) ([]byte, error) {
+	result := bytes.NewBuffer(nil)
+	tb := make([]byte, 4)
+	conn.SetReadDeadline(time.Now().Add(time.Second * 30))
+	i, err := io.ReadFull(conn, tb)
+	result.Write(tb[0:i])
+	if err != nil {
+		return result.Bytes(), err
+	}
+	var length int32
+	err = binary.Read(result, binary.BigEndian, &length)
+	if length > 4096 {
+		conn.Close()
+		log.Printf("Invalid Length %d", length)
+		return result.Bytes(), err
+	}
+	result = bytes.NewBuffer(nil)
+	result.Write(tb)
+	tb = make([]byte, length)
+	conn.SetReadDeadline(time.Now().Add(time.Second * 30))
+	i, err = io.ReadFull(conn, tb)
+	result.Write(tb)
+	return result.Bytes(), err
+
+}
+
+func (c *Client) Join() bool {
+	join := NewPacket(c.nextInt(), MESSAGE_JOIN)
+	join.AddTagInt32(TAG_CLIENTID, c.UserId)
+	join.AddTagInt32(TAG_ROOMID, c.RoomId)
+	b, err := join.Encode()
+	//log.Printf("Send Hex %x %s", b, join.String())
+	//conn.Write()
+	_, err = c.session.Write(b)
+	checkError("Join", err)
+	return err != nil
+	//b, err = readPacket(conn)
+	//checkError(err)
+	//if err != nil {
+	//	return false
+	//}
+	//join.Decode(b)
+	//log.Printf("Recv Hex %x %s", b, join.String())
+	//return true
+}
+
+func (c *Client) Handshake() bool {
+	_, err := net.ResolveTCPAddr("tcp4", c.Address)
+	checkError("Handshake ResolveTCPAddr", err)
+	if err != nil {
+		return false
+	}
+	conn, err := net.DialTimeout("tcp", c.Address, time.Second*30) //net.DialTCP("tcp", nil, tcpAddr)
+	checkError("Handshake DialTimeout", err)
+	if err != nil {
+		return false
+	}
+	conn.(*net.TCPConn).SetKeepAlive(true)
+	conn.(*net.TCPConn).SetNoDelay(true)
+	c.session = conn
+	handshake := NewHandshake(c.SecKey)
+	b, err := handshake.Encode()
+	_, err = conn.Write(b)
+	//log.Printf("Send Hex %d %x %s", i, b, handshake.String())
+	checkError("Handshake Write", err)
+	b, err = readPacket(conn)
+	checkError("Handshake Read", err)
+	if err != nil {
+		return false
+	}
+	handshake.Decode(b)
+	//log.Printf("Recv Hex %x %s", b, handshake.String())
+	c.logined = true
+	go loop(conn)
+	return true
+}
+
+func (c *Client) SendMessage(text string) bool {
+	chat := NewPacket(c.nextInt(), MESSAGE_CHAT)
+	chat.AddTagInt32(TAG_FROM, c.UserId)
+	chat.AddTagInt32(TAG_TO, c.RoomId)
+	chat.AddTagString(TAG_CONTENT, text)
+	b, err := chat.Encode()
+	//log.Printf("Send Hex %x %s", b, chat.String())
+	_, err = c.session.Write(b)
+	checkError("SendMessage Write", err)
+	if err != nil {
+		c.logined = false
+	}
+	return err != nil
+}
+
+func loop(conn net.Conn) {
+	for {
+		//conn.SetReadDeadline(time.Now().Add(time.Second * 90))
+		b, err := readPacket(conn)
+		checkError("Loop readPacket", err)
+		if err != nil {
+			break
+		}
+		pk := new(Packet)
+		err = pk.Decode(b)
+		checkError("Loop Decode", err)
+		if err == nil {
+			//log.Printf("Receive Hex %x %s", b, pk.String())
+		} else {
+			log.Printf("Receive Hex %x", b)
+		}
+	}
+	log.Printf("Loop exit %+v/%+v", conn.LocalAddr(), conn.RemoteAddr())
+}
+
+
+// protocol
+package main
+
+import (
+	"bytes"
+	"encoding/binary"
+	"fmt"
+	"log"
+	"math/rand"
+	"strconv"
+	"time"
+)
+
+const (
+	TAG_CODE     int32 = 0
+	TAG_CLIENTID int32 = 1
+	TAG_FROM     int32 = 2
+	TAG_TO       int32 = 3
+	TAG_ROOMID   int32 = 4
+	TAG_CONTENT  int32 = 5 //string
+	TAG_ICON     int32 = 6 //string
+)
+
+const (
+	MESSAGE_JOIN          int32 = 1
+	MESSAGE_LEAVE         int32 = 2
+	MESSAGE_CHAT          int32 = 3
+	MESSAGE_USERLIST      int32 = 4
+	ACK_MESSAGE           int32 = 0x0
+	KEEPALIVE_MESSAGE     int32 = 111
+	ACK_KEEPALIVE_MESSAGE int32 = 0x1111
+	UNKNOWN_MESSAGE       int32 = 0x7474
+)
+
+type PacketEncodeError struct {
+	Err string
+}
+
+func (e *PacketEncodeError) Error() string {
+	return e.Err
+}
+
+type Handshake struct {
+	PacketLength int32
+	Random       int32
+	Timestamp    int32
+	Version      byte
+	Signature    string //MD5(密钥+yyyymmddhhMMss+Random+Version)
+}
+type TLV struct {
+	Tag    int32
+	Length int32
+	Value  []byte
+}
+
+func NewTlv(tag int32, value string) *TLV {
+	tlv := new(TLV)
+	tlv.Tag = tag
+	tlv.Value = []byte(value)
+	tlv.Length = int32(len(tlv.Value))
+	return tlv
+}
+
+func NewTlv1(tag int32, value int32) *TLV {
+	tlv := new(TLV)
+	tlv.Tag = tag
+	buf := bytes.NewBuffer(nil)
+	binary.Write(buf, binary.BigEndian, &value)
+	tlv.Value = buf.Bytes()
+	tlv.Length = 4
+	return tlv
+}
+
+func (p *TLV) Encode() []byte {
+	buf := bytes.NewBuffer(nil)
+	binary.Write(buf, binary.BigEndian, p.Tag)
+	binary.Write(buf, binary.BigEndian, p.Length)
+	buf.Write(p.Value)
+	return buf.Bytes()
+}
+
+func (p *TLV) Decode(b []byte) error {
+	return nil
+}
+
+type Packet struct {
+	PacketLength int32
+	Sequence     int32
+	Timestamp    int32
+	MessageType  int32
+	Tags         []TLV
+}
+
+func NewPacket(seq int32, mtype int32) *Packet {
+	packet := new(Packet)
+	packet.Sequence = seq
+	packet.Timestamp = int32(time.Now().Unix())
+	packet.MessageType = mtype
+	packet.Tags = make([]TLV, 0)
+	return packet
+}
+
+func (p *Packet) Encode() ([]byte, error) {
+	buf := bytes.NewBuffer(nil)
+	err := binary.Write(buf, binary.BigEndian, p.Sequence)
+	err = binary.Write(buf, binary.BigEndian, p.Timestamp)
+	err = binary.Write(buf, binary.BigEndian, p.MessageType)
+	for i := 0; i < len(p.Tags); i++ {
+		tlv := p.Tags[i]
+		buf.Write(tlv.Encode())
+	}
+	b := buf.Bytes()
+	p.PacketLength = int32(len(b))
+	buf = bytes.NewBuffer(nil)
+	err = binary.Write(buf, binary.BigEndian, p.PacketLength)
+	buf.Write(b)
+	return buf.Bytes(), err
+}
+
+func (p *Packet) Decode(b []byte) error {
+	buf := bytes.NewBuffer(nil)
+	_, err := buf.Write(b)
+
+	err = binary.Read(buf, binary.BigEndian, &p.PacketLength)
+	if int32(len(b)) != p.PacketLength+4 {
+		log.Printf("Invaild PacketLength %d/%d", len(b), p.PacketLength)
+		buf = bytes.NewBuffer(nil)
+		_, err = buf.Write(b)
+	}
+	err = binary.Read(buf, binary.BigEndian, &p.Sequence)
+	err = binary.Read(buf, binary.BigEndian, &p.Timestamp)
+	err = binary.Read(buf, binary.BigEndian, &p.MessageType)
+	for len(buf.Bytes()) > 0 {
+		var t, l int32
+		binary.Read(buf, binary.BigEndian, &t)
+		binary.Read(buf, binary.BigEndian, &l)
+		if l > 4096 {
+			log.Printf("Invaild Tag Length %d/%d", t, l)
+			break
+		}
+		b := make([]byte, l)
+		buf.Read(b)
+		p.AddTag(TLV{t, l, b})
+	}
+	return err
+}
+
+func (p *Packet) AddTagString(tag int32, value string) {
+	tlv := TLV{Tag: tag, Value: []byte(value)}
+	tlv.Length = int32(len(tlv.Value))
+	p.Tags = append(p.Tags, tlv)
+}
+
+func (p *Packet) AddTagInt32(tag int32, value int32) {
+	tlv := TLV{Tag: tag, Length: 4}
+	buf := bytes.NewBuffer(nil)
+	binary.Write(buf, binary.BigEndian, &value)
+	tlv.Value = buf.Bytes()
+	p.Tags = append(p.Tags, tlv)
+}
+
+func (p *Packet) AddTag(tag TLV) {
+	p.Tags = append(p.Tags, tag)
+}
+
+func (p *Packet) String() string {
+	return fmt.Sprintf("Packet %+v", *p)
+}
+
+func NewHandshake(key string) *Handshake {
+	handshake := new(Handshake)
+	handshake.Random = rand.Int31()
+	handshake.Timestamp = int32(time.Now().Unix())
+	handshake.Version = 1
+	handshake.Signature = MD5([]byte(key + strconv.FormatInt(int64(handshake.Timestamp), 10) + strconv.FormatInt(int64(handshake.Random), 10) + strconv.Itoa(int(handshake.Version))))
+	//handshake.PacketLength = 4 + 4 + 1 + int32(len([]byte(handshake.Signature)))
+	return handshake
+}
+
+func (p *Handshake) Encode() ([]byte, error) {
+	buf := bytes.NewBuffer(nil)
+	b := []byte(p.Signature)
+	p.PacketLength = int32(len(b) + 9)
+	err := binary.Write(buf, binary.BigEndian, p.PacketLength)
+	err = binary.Write(buf, binary.BigEndian, p.Random)
+	err = binary.Write(buf, binary.BigEndian, p.Timestamp)
+	err = binary.Write(buf, binary.BigEndian, p.Version)
+	_, err = buf.Write(b)
+	return buf.Bytes(), err
+}
+
+func (p *Handshake) Decode(b []byte) error {
+	if len(b) >= 50 {
+		buf := bytes.NewBuffer(nil)
+		_, err := buf.Write(b)
+		err = binary.Read(buf, binary.BigEndian, &p.PacketLength)
+		err = binary.Read(buf, binary.BigEndian, &p.Random)
+		err = binary.Read(buf, binary.BigEndian, &p.Timestamp)
+		err = binary.Read(buf, binary.BigEndian, &p.Version)
+		p.Signature = string(buf.Bytes())
+		//p.PacketLength = int32(len(b))
+		return err
+	}
+	return &PacketEncodeError{"Invalid PakcetLength " + string(len(b))}
+}
+
+func (p *Handshake) String() string {
+	return fmt.Sprintf("Handshake %+v", *p)
+}

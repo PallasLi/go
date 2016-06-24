@@ -1,0 +1,41 @@
+查看(文档)包定义
+go doc packagename
+
+
+
+定义常量
+const name type = value
+const {
+	name type = value
+	...
+}
+
+
+定义变量
+var name type
+var {
+	name type
+	...
+
+}
+
+使用 := 不用使用var关键字也不用声明类型
+
+不使用的变量用_代替，表示抛弃
+name1,name2... :=value1,value2...
+
+
+多行字符串两种方式
+1. 双引号 +  ，+号必须出现在行尾
+2. 反引号
+
+int,int8,int16,int32(rune),int64 和 uint8(byte),uint16,uint32,uint64。
+虚数complex64和complex128
+var c complex64 = 5+5i;fmt.Printf("Value is: %v", c)
+内建类型：error
+
+
+
+
+
+
