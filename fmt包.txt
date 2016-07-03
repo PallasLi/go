@@ -191,129 +191,82 @@ func Sscan(str string, a ...interface{}) (n int, err error)
 func Scanln(a ...interface{}) (n int, err error)
 func Fscanln(r io.Reader, a ...interface{}) (n int, err error)
 func Sscanln(str string, a ...interface{}) (n int, err error)
-type Stringer
+
 
 type Stringer interface { String() string }
 实现了Stringer接口的类型（即有String方法），定义了该类型值的原始显示。当采用任何接受字符的verb（%v %s %q %x %X）动作格式化一个操作数时，或者被不使用格式字符串如Print函数打印操作数时，会调用String方法来生成输出的文本。
 
-type GoStringer
-
 type GoStringer interface { GoString() string }
 实现了GoStringer接口的类型（即有GoString方法），定义了该类型值的go语法表示。当采用verb %#v格式化一个操作数时，会调用GoString方法来生成输出的文本。
-
-type State
 
 type State interface { // Write方法用来写入格式化的文本 Write(b []byte) (ret int, err error) // Width返回宽度值，及其是否被设置 Width() (wid int, ok bool) // Precision返回精度值，及其是否被设置 Precision() (prec int, ok bool) // Flag报告是否设置了flag c（一个字符，如+、-、#等） Flag(c int) bool }
 State代表一个传递给自定义Formatter接口的Format方法的打印环境。它实现了io.Writer接口用来写入格式化的文本，还提供了该操作数的格式字符串指定的选项和宽度、精度信息（通过调用方法）。
 
-type Formatter
 
 type Formatter interface { // c为verb，f提供verb的细节信息和Write方法用于写入生成的格式化文本 Format(f State, c rune)
 }
 实现了Formatter接口的类型可以定制自己的格式化输出。Format方法的实现内部可以调用Sprint或Fprint等函数来生成自身的输出。
 
-type ScanState
-
 type ScanState interface { // 从输入读取下一个rune（Unicode码值），在读取超过指定宽度时会返回EOF // 如果在Scanln、Fscanln或Sscanln中被调用，本方法会在返回第一个'\n'后再次调用时返回EOF ReadRune() (r rune, size int, err error) // UnreadRune方法让下一次调用ReadRune时返回上一次返回的rune且不移动读取位置 UnreadRune() error // SkipSpace方法跳过输入中的空白，换行被视为空白 // 在Scanln、Fscanln或Sscanln中被调用时，换行被视为EOF SkipSpace() // 方法从输入中依次读取rune并用f测试，直到f返回假；将读取的rune组织为一个[]byte切片返回。 // 如果skipSpace参数为真，本方法会先跳过输入中的空白。 // 如果f为nil，会使用!unicode.IsSpace(c)；就是说返回值token将为一串非空字符。 // 换行被视为空白，在Scanln、Fscanln或Sscanln中被调用时，换行被视为EOF。 // 返回的切片指向一个共享内存，可能被下一次调用Token方法时重写； // 或被使用该Scanstate的另一个Scan函数重写；或者在本次调用的Scan方法返回时重写。 Token(skipSpace bool, f func(rune) bool) (token []byte, err error) // Width返回返回宽度值，及其是否被设置。单位是unicode码值。 Width() (wid int, ok bool) // 因为本接口实现了ReadRune方法，Read方法永远不应被在Scanner接口中使用。 // 一个合法的ScanStat接口实现可能会选择让本方法总是返回错误。 Read(buf []byte) (n int, err error)
 }
 ScanState代表一个将传递给Scanner接口的Scan方法的扫描环境。 Scan函数中，可以进行一次一个rune的扫描，或者使用Token方法获得下一个token（比如空白分隔的token）。
 
-type Scanner
-
 type Scanner interface { Scan(state ScanState, verb rune) error }
 当Scan、Scanf、Scanln或类似函数接受实现了Scanner接口的类型（其Scan方法的receiver必须是指针，该方法从输入读取该类型值的字符串表示并将结果写入receiver）的指针作为参数时，会调用其Scan方法进行定制的扫描。
-
-func Printf
 
 func Printf(format string, a ...interface{}) (n int, err error)
 Printf根据format参数生成格式化的字符串并写入标准输出。返回写入的字节数和遇到的任何错误。
 
-func Fprintf
-
 func Fprintf(w io.Writer, format string, a ...interface{}) (n int, err error)
 Fprintf根据format参数生成格式化的字符串并写入w。返回写入的字节数和遇到的任何错误。
-
-func Sprintf
 
 func Sprintf(format string, a ...interface{}) string
 Sprintf根据format参数生成格式化的字符串并返回该字符串。
 
-func Print
-
 func Print(a ...interface{}) (n int, err error)
 Print采用默认格式将其参数格式化并写入标准输出。如果两个相邻的参数都不是字符串，会在它们的输出之间添加空格。返回写入的字节数和遇到的任何错误。
-
-func Fprint
 
 func Fprint(w io.Writer, a ...interface{}) (n int, err error)
 Fprint采用默认格式将其参数格式化并写入w。如果两个相邻的参数都不是字符串，会在它们的输出之间添加空格。返回写入的字节数和遇到的任何错误。
 
-func Sprint
-
 func Sprint(a ...interface{}) string
 Sprint采用默认格式将其参数格式化，串联所有输出生成并返回一个字符串。如果两个相邻的参数都不是字符串，会在它们的输出之间添加空格。
-
-func Println
 
 func Println(a ...interface{}) (n int, err error)
 Println采用默认格式将其参数格式化并写入标准输出。总是会在相邻参数的输出之间添加空格并在输出结束后添加换行符。返回写入的字节数和遇到的任何错误。
 
-func Fprintln
-
 func Fprintln(w io.Writer, a ...interface{}) (n int, err error)
 Fprintln采用默认格式将其参数格式化并写入w。总是会在相邻参数的输出之间添加空格并在输出结束后添加换行符。返回写入的字节数和遇到的任何错误。
-
-func Sprintln
 
 func Sprintln(a ...interface{}) string
 Sprintln采用默认格式将其参数格式化，串联所有输出生成并返回一个字符串。总是会在相邻参数的输出之间添加空格并在输出结束后添加换行符。
 
-func Errorf
-
 func Errorf(format string, a ...interface{}) error
 Errorf根据format参数生成格式化字符串并返回一个包含该字符串的错误。
-
-func Scanf
 
 func Scanf(format string, a ...interface{}) (n int, err error)
 Scanf从标准输入扫描文本，根据format 参数指定的格式将成功读取的空白分隔的值保存进成功传递给本函数的参数。返回成功扫描的条目个数和遇到的任何错误。
 
-func Fscanf
-
 func Fscanf(r io.Reader, format string, a ...interface{}) (n int, err error)
 Fscanf从r扫描文本，根据format 参数指定的格式将成功读取的空白分隔的值保存进成功传递给本函数的参数。返回成功扫描的条目个数和遇到的任何错误。
-
-func Sscanf
 
 func Sscanf(str string, format string, a ...interface{}) (n int, err error)
 Sscanf从字符串str扫描文本，根据format 参数指定的格式将成功读取的空白分隔的值保存进成功传递给本函数的参数。返回成功扫描的条目个数和遇到的任何错误。
 
-func Scan
-
 func Scan(a ...interface{}) (n int, err error)
 Scan从标准输入扫描文本，将成功读取的空白分隔的值保存进成功传递给本函数的参数。换行视为空白。返回成功扫描的条目个数和遇到的任何错误。如果读取的条目比提供的参数少，会返回一个错误报告原因。
-
-func Fscan
 
 func Fscan(r io.Reader, a ...interface{}) (n int, err error)
 Fscan从r扫描文本，将成功读取的空白分隔的值保存进成功传递给本函数的参数。换行视为空白。返回成功扫描的条目个数和遇到的任何错误。如果读取的条目比提供的参数少，会返回一个错误报告原因。
 
-func Sscan
-
 func Sscan(str string, a ...interface{}) (n int, err error)
 Sscan从字符串str扫描文本，将成功读取的空白分隔的值保存进成功传递给本函数的参数。换行视为空白。返回成功扫描的条目个数和遇到的任何错误。如果读取的条目比提供的参数少，会返回一个错误报告原因。
-
-func Scanln
 
 func Scanln(a ...interface{}) (n int, err error)
 Scanln类似Scan，但会在换行时才停止扫描。最后一个条目后必须有换行或者到达结束位置。
 
-func Fscanln
-
 func Fscanln(r io.Reader, a ...interface{}) (n int, err error)
 Fscanln类似Fscan，但会在换行时才停止扫描。最后一个条目后必须有换行或者到达结束位置。
-
-func Sscanln
 
 func Sscanln(str string, a ...interface{}) (n int, err error)
 Sscanln类似Sscan，但会在换行时才停止扫描。最后一个条目后必须有换行或者到达结束位置。

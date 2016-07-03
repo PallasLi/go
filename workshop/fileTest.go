@@ -1,70 +1,3 @@
-1. [代码]关闭文件     
-func (file *File) Close() os.Error {
-    if file == nil {
-        return os.EINVAL
-    }
-    e := syscall.Close(file.fd)
-    file.fd = -1 // so it can't be closed again
-    if e != 0 {
-        return os.Errno(e)
-    }
-    return nil
-}
-2. [代码]文件读取     
-func (file *File) Read(b []byte) (ret int, err os.Error) {
-    if file == nil {
-        return -1, os.EINVAL
-    }
-    r, e := syscall.Read(file.fd, b)
-    if e != 0 {
-        err = os.Errno(e)
-    }
-    return int(r), err
-}
-3. [代码]写文件     
-func (file *File) Write(b []byte) (ret int, err os.Error) {
-    if file == nil {
-        return -1, os.EINVAL
-    }
-    r, e := syscall.Write(file.fd, b)
-    if e != 0 {
-        err = os.Errno(e)
-    }
-    return int(r), err
-}
-4. [代码]获取文件名     
-func (file *File) String() string {
-    return file.name
-}
-
-遍历目录
-filepath.Walk("/home/leo", 
-        func(path string,f os.FileInfo, err error) error {
-            if (f == nil) {
-                return err
-            }
-            if f.IsDir() {
-                return nil
-            }
-            println(path)
-            return nil
-        })   
-
-
-语言获取文件sha1值
-file, err := os.Open("./file/Canon.mp3")
-    if err != nil {
-        return
-    }
-    defer file.Close()
-    h := sha1.New()
-    _, erro := io.Copy(h, file)
-    if erro != nil {
-        return
-    }
-    fmt.Printf("%x\n", h.Sum(nil))
-
-
 
 package main
 //这个程序是为了把log日志目录下的文件
@@ -83,6 +16,76 @@ import (
     "log"
     "path/filepath"
 )
+
+
+//关闭文件     
+func (file *File) Close() os.Error {
+    if file == nil {
+        return os.EINVAL
+    }
+    e := syscall.Close(file.fd)
+    file.fd = -1 // so it can't be closed again
+    if e != 0 {
+        return os.Errno(e)
+    }
+    return nil
+}
+//文件读取     
+func (file *File) Read(b []byte) (ret int, err os.Error) {
+    if file == nil {
+        return -1, os.EINVAL
+    }
+    r, e := syscall.Read(file.fd, b)
+    if e != 0 {
+        err = os.Errno(e)
+    }
+    return int(r), err
+}
+//写文件     
+func (file *File) Write(b []byte) (ret int, err os.Error) {
+    if file == nil {
+        return -1, os.EINVAL
+    }
+    r, e := syscall.Write(file.fd, b)
+    if e != 0 {
+        err = os.Errno(e)
+    }
+    return int(r), err
+}
+//获取文件名     
+func (file *File) String() string {
+    return file.name
+}
+
+//遍历目录
+filepath.Walk("/home/leo", 
+        func(path string,f os.FileInfo, err error) error {
+            if (f == nil) {
+                return err
+            }
+            if f.IsDir() {
+                return nil
+            }
+            println(path)
+            return nil
+        })   
+
+
+//语言获取文件sha1值
+file, err := os.Open("./file/Canon.mp3")
+    if err != nil {
+        return
+    }
+    defer file.Close()
+    h := sha1.New()
+    _, erro := io.Copy(h, file)
+    if erro != nil {
+        return
+    }
+    fmt.Printf("%x\n", h.Sum(nil))
+
+
+
 func checkError(err error) {
     if err != nil {
         log.Fatalf("Error: %s", err)
@@ -178,15 +181,4 @@ func main() {
         //moveFiles(s)
     }
 }
-
-
-
-
-
-
-
-
-
-
-
 

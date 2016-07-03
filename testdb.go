@@ -7,7 +7,7 @@ import (
 
 func main() {
 	//conn, err := sql.Open("odbc", "driver={Microsoft Access Driver (*.mdb)};dbq=d:\\test.mdb")
-	conn, err := sql.Open("mysql", "user:password@tcp(localhost:5555)/dbname?charset=utf8")
+	conn, err := sql.Open("mysql", "user:password@tcp(localhost:3306)/dbname?charset=utf8")
 	if err != nil {
 		fmt.Println("Connecting Error")
 		fmt.Printf("%v\n",err)
