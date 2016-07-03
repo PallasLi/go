@@ -1,0 +1,568 @@
+package net
+import "net"
+
+net包提供了可移植的网络I/O接口，包括TCP/IP、UDP、域名解析和Unix域socket。
+
+虽然本包提供了对网络原语的访问，大部分使用者只需要Dial、Listen和Accept函数提供的基本接口；以及相关的Conn和Listener接口。crypto/tls包提供了相同的接口和类似的Dial和Listen函数。
+
+Dial函数和服务端建立连接：
+
+conn, err := net.Dial("tcp", "google.com:80")
+if err != nil {
+	// handle error
+}
+fmt.Fprintf(conn, "GET / HTTP/1.0\r\n\r\n")
+status, err := bufio.NewReader(conn).ReadString('\n')
+// ...
+Listen函数创建的服务端：
+
+ln, err := net.Listen("tcp", ":8080")
+if err != nil {
+	// handle error
+}
+for {
+	conn, err := ln.Accept()
+	if err != nil {
+		// handle error
+		continue
+	}
+	go handleConnection(conn)
+}
+Index
+Constants
+Variables
+type ParseError
+func (e *ParseError) Error() string
+type Error
+type InvalidAddrError
+func (e InvalidAddrError) Error() string
+func (e InvalidAddrError) Temporary() bool
+func (e InvalidAddrError) Timeout() bool
+type UnknownNetworkError
+func (e UnknownNetworkError) Error() string
+func (e UnknownNetworkError) Temporary() bool
+func (e UnknownNetworkError) Timeout() bool
+type DNSConfigError
+func (e *DNSConfigError) Error() string
+func (e *DNSConfigError) Temporary() bool
+func (e *DNSConfigError) Timeout() bool
+type DNSError
+func (e *DNSError) Error() string
+func (e *DNSError) Temporary() bool
+func (e *DNSError) Timeout() bool
+type AddrError
+func (e *AddrError) Error() string
+func (e *AddrError) Temporary() bool
+func (e *AddrError) Timeout() bool
+type OpError
+func (e *OpError) Error() string
+func (e *OpError) Temporary() bool
+func (e *OpError) Timeout() bool
+func SplitHostPort(hostport string) (host, port string, err error)
+func JoinHostPort(host, port string) string
+type HardwareAddr
+func ParseMAC(s string) (hw HardwareAddr, err error)
+func (a HardwareAddr) String() string
+type Flags
+func (f Flags) String() string
+type Interface
+func InterfaceByIndex(index int) (*Interface, error)
+func InterfaceByName(name string) (*Interface, error)
+func (ifi *Interface) Addrs() ([]Addr, error)
+func (ifi *Interface) MulticastAddrs() ([]Addr, error)
+func Interfaces() ([]Interface, error)
+func InterfaceAddrs() ([]Addr, error)
+type IP
+func IPv4(a, b, c, d byte) IP
+func ParseIP(s string) IP
+func (ip IP) IsGlobalUnicast() bool
+func (ip IP) IsLinkLocalUnicast() bool
+func (ip IP) IsInterfaceLocalMulticast() bool
+func (ip IP) IsLinkLocalMulticast() bool
+func (ip IP) IsMulticast() bool
+func (ip IP) IsLoopback() bool
+func (ip IP) IsUnspecified() bool
+func (ip IP) DefaultMask() IPMask
+func (ip IP) Equal(x IP) bool
+func (ip IP) To16() IP
+func (ip IP) To4() IP
+func (ip IP) Mask(mask IPMask) IP
+func (ip IP) String() string
+func (ip IP) MarshalText() ([]byte, error)
+func (ip *IP) UnmarshalText(text []byte) error
+type IPMask
+func IPv4Mask(a, b, c, d byte) IPMask
+func CIDRMask(ones, bits int) IPMask
+func (m IPMask) Size() (ones, bits int)
+func (m IPMask) String() string
+type IPNet
+func ParseCIDR(s string) (IP, *IPNet, error)
+func (n *IPNet) Contains(ip IP) bool
+func (n *IPNet) Network() string
+func (n *IPNet) String() string
+type Addr
+type Conn
+func Dial(network, address string) (Conn, error)
+func DialTimeout(network, address string, timeout time.Duration) (Conn, error)
+func Pipe() (Conn, Conn)
+type PacketConn
+func ListenPacket(net, laddr string) (PacketConn, error)
+type Dialer
+func (d *Dialer) Dial(network, address string) (Conn, error)
+type Listener
+func Listen(net, laddr string) (Listener, error)
+type IPAddr
+func ResolveIPAddr(net, addr string) (*IPAddr, error)
+func (a *IPAddr) Network() string
+func (a *IPAddr) String() string
+type TCPAddr
+func ResolveTCPAddr(net, addr string) (*TCPAddr, error)
+func (a *TCPAddr) Network() string
+func (a *TCPAddr) String() string
+type UDPAddr
+func ResolveUDPAddr(net, addr string) (*UDPAddr, error)
+func (a *UDPAddr) Network() string
+func (a *UDPAddr) String() string
+type UnixAddr
+func ResolveUnixAddr(net, addr string) (*UnixAddr, error)
+func (a *UnixAddr) Network() string
+func (a *UnixAddr) String() string
+type IPConn
+func DialIP(netProto string, laddr, raddr *IPAddr) (*IPConn, error)
+func ListenIP(netProto string, laddr *IPAddr) (*IPConn, error)
+func (c *IPConn) LocalAddr() Addr
+func (c *IPConn) RemoteAddr() Addr
+func (c *IPConn) SetReadBuffer(bytes int) error
+func (c *IPConn) SetWriteBuffer(bytes int) error
+func (c *IPConn) SetDeadline(t time.Time) error
+func (c *IPConn) SetReadDeadline(t time.Time) error
+func (c *IPConn) SetWriteDeadline(t time.Time) error
+func (c *IPConn) Read(b []byte) (int, error)
+func (c *IPConn) ReadFrom(b []byte) (int, Addr, error)
+func (c *IPConn) ReadFromIP(b []byte) (int, *IPAddr, error)
+func (c *IPConn) ReadMsgIP(b, oob []byte) (n, oobn, flags int, addr *IPAddr, err error)
+func (c *IPConn) Write(b []byte) (int, error)
+func (c *IPConn) WriteTo(b []byte, addr Addr) (int, error)
+func (c *IPConn) WriteToIP(b []byte, addr *IPAddr) (int, error)
+func (c *IPConn) WriteMsgIP(b, oob []byte, addr *IPAddr) (n, oobn int, err error)
+func (c *IPConn) Close() error
+func (c *IPConn) File() (f *os.File, err error)
+type TCPConn
+func DialTCP(net string, laddr, raddr *TCPAddr) (*TCPConn, error)
+func (c *TCPConn) LocalAddr() Addr
+func (c *TCPConn) RemoteAddr() Addr
+func (c *TCPConn) SetReadBuffer(bytes int) error
+func (c *TCPConn) SetWriteBuffer(bytes int) error
+func (c *TCPConn) SetDeadline(t time.Time) error
+func (c *TCPConn) SetReadDeadline(t time.Time) error
+func (c *TCPConn) SetWriteDeadline(t time.Time) error
+func (c *TCPConn) SetKeepAlive(keepalive bool) error
+func (c *TCPConn) SetKeepAlivePeriod(d time.Duration) error
+func (c *TCPConn) SetLinger(sec int) error
+func (c *TCPConn) SetNoDelay(noDelay bool) error
+func (c *TCPConn) Read(b []byte) (int, error)
+func (c *TCPConn) ReadFrom(r io.Reader) (int64, error)
+func (c *TCPConn) Write(b []byte) (int, error)
+func (c *TCPConn) Close() error
+func (c *TCPConn) CloseRead() error
+func (c *TCPConn) CloseWrite() error
+func (c *TCPConn) File() (f *os.File, err error)
+type UDPConn
+func DialUDP(net string, laddr, raddr *UDPAddr) (*UDPConn, error)
+func ListenMulticastUDP(net string, ifi *Interface, gaddr *UDPAddr) (*UDPConn, error)
+func ListenUDP(net string, laddr *UDPAddr) (*UDPConn, error)
+func (c *UDPConn) LocalAddr() Addr
+func (c *UDPConn) RemoteAddr() Addr
+func (c *UDPConn) SetReadBuffer(bytes int) error
+func (c *UDPConn) SetWriteBuffer(bytes int) error
+func (c *UDPConn) SetDeadline(t time.Time) error
+func (c *UDPConn) SetReadDeadline(t time.Time) error
+func (c *UDPConn) SetWriteDeadline(t time.Time) error
+func (c *UDPConn) Read(b []byte) (int, error)
+func (c *UDPConn) ReadFrom(b []byte) (int, Addr, error)
+func (c *UDPConn) ReadFromUDP(b []byte) (n int, addr *UDPAddr, err error)
+func (c *UDPConn) ReadMsgUDP(b, oob []byte) (n, oobn, flags int, addr *UDPAddr, err error)
+func (c *UDPConn) Write(b []byte) (int, error)
+func (c *UDPConn) WriteTo(b []byte, addr Addr) (int, error)
+func (c *UDPConn) WriteToUDP(b []byte, addr *UDPAddr) (int, error)
+func (c *UDPConn) WriteMsgUDP(b, oob []byte, addr *UDPAddr) (n, oobn int, err error)
+func (c *UDPConn) Close() error
+func (c *UDPConn) File() (f *os.File, err error)
+type UnixConn
+func DialUnix(net string, laddr, raddr *UnixAddr) (*UnixConn, error)
+func ListenUnixgram(net string, laddr *UnixAddr) (*UnixConn, error)
+func (c *UnixConn) LocalAddr() Addr
+func (c *UnixConn) RemoteAddr() Addr
+func (c *UnixConn) SetReadBuffer(bytes int) error
+func (c *UnixConn) SetWriteBuffer(bytes int) error
+func (c *UnixConn) SetDeadline(t time.Time) error
+func (c *UnixConn) SetReadDeadline(t time.Time) error
+func (c *UnixConn) SetWriteDeadline(t time.Time) error
+func (c *UnixConn) Read(b []byte) (int, error)
+func (c *UnixConn) ReadFrom(b []byte) (int, Addr, error)
+func (c *UnixConn) ReadFromUnix(b []byte) (n int, addr *UnixAddr, err error)
+func (c *UnixConn) ReadMsgUnix(b, oob []byte) (n, oobn, flags int, addr *UnixAddr, err error)
+func (c *UnixConn) Write(b []byte) (int, error)
+func (c *UnixConn) WriteTo(b []byte, addr Addr) (n int, err error)
+func (c *UnixConn) WriteToUnix(b []byte, addr *UnixAddr) (n int, err error)
+func (c *UnixConn) WriteMsgUnix(b, oob []byte, addr *UnixAddr) (n, oobn int, err error)
+func (c *UnixConn) Close() error
+func (c *UnixConn) CloseRead() error
+func (c *UnixConn) CloseWrite() error
+func (c *UnixConn) File() (f *os.File, err error)
+type TCPListener
+func ListenTCP(net string, laddr *TCPAddr) (*TCPListener, error)
+func (l *TCPListener) Addr() Addr
+func (l *TCPListener) SetDeadline(t time.Time) error
+func (l *TCPListener) Accept() (Conn, error)
+func (l *TCPListener) AcceptTCP() (*TCPConn, error)
+func (l *TCPListener) Close() error
+func (l *TCPListener) File() (f *os.File, err error)
+type UnixListener
+func ListenUnix(net string, laddr *UnixAddr) (*UnixListener, error)
+func (l *UnixListener) Addr() Addr
+func (l *UnixListener) SetDeadline(t time.Time) (err error)
+func (l *UnixListener) Accept() (c Conn, err error)
+func (l *UnixListener) AcceptUnix() (*UnixConn, error)
+func (l *UnixListener) Close() error
+func (l *UnixListener) File() (f *os.File, err error)
+func FileConn(f *os.File) (c Conn, err error)
+func FilePacketConn(f *os.File) (c PacketConn, err error)
+func FileListener(f *os.File) (l Listener, err error)
+type MX
+type NS
+type SRV
+func LookupPort(network, service string) (port int, err error)
+func LookupCNAME(name string) (cname string, err error)
+func LookupHost(host string) (addrs []string, err error)
+func LookupIP(host string) (addrs []IP, err error)
+func LookupAddr(addr string) (name []string, err error)
+func LookupMX(name string) (mx []*MX, err error)
+func LookupNS(name string) (ns []*NS, err error)
+func LookupSRV(service, proto, name string) (cname string, addrs []*SRV, err error)
+func LookupTXT(name string) (txt []string, err error)
+Examples
+
+Listener
+Constants
+
+const ( IPv4len = 4 IPv6len = 16
+)
+IP address lengths (bytes).
+
+Variables
+var ( IPv4bcast = IPv4(255, 255, 255, 255) // 广播地址 IPv4allsys = IPv4(224, 0, 0, 1) // 所有主机和路由器 IPv4allrouter = IPv4(224, 0, 0, 2) // 所有路由器 IPv4zero = IPv4(0, 0, 0, 0) // 本地地址，只能作为源地址（曾用作广播地址） )
+常用的IPv4地址。
+
+var ( IPv6zero = IP{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} IPv6unspecified = IP{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} IPv6loopback = IP{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1} IPv6interfacelocalallnodes = IP{0xff, 0x01, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01} IPv6linklocalallnodes = IP{0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01} IPv6linklocalallrouters = IP{0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x02}
+)
+常用的IPv6地址。
+
+var ( ErrWriteToConnected = errors.New("use of WriteTo with pre-connected connection")
+)
+很多OpError类型的错误会包含本错误。
+
+type ParseError
+type ParseError struct { Type string Text string }
+ParseError代表一个格式错误的字符串，Type为期望的格式。
+
+func (*ParseError) Error
+
+func (e *ParseError) Error() string
+type Error
+type Error interface { error Timeout() bool // 错误是否为超时？ Temporary() bool // 错误是否是临时的？ }
+Error代表一个网络错误。
+
+type UnknownNetworkError
+type UnknownNetworkError string
+func (UnknownNetworkError) Error
+
+func (e UnknownNetworkError) Error() string
+func (UnknownNetworkError) Temporary
+
+func (e UnknownNetworkError) Temporary() bool
+func (UnknownNetworkError) Timeout
+
+func (e UnknownNetworkError) Timeout() bool
+type InvalidAddrError
+type InvalidAddrError string
+func (InvalidAddrError) Error
+
+func (e InvalidAddrError) Error() string
+func (InvalidAddrError) Temporary
+
+func (e InvalidAddrError) Temporary() bool
+func (InvalidAddrError) Timeout
+
+func (e InvalidAddrError) Timeout() bool
+type DNSConfigError
+type DNSConfigError struct { Err error }
+DNSConfigError代表读取主机DNS配置时出现的错误。
+
+func (*DNSConfigError) Error
+
+func (e *DNSConfigError) Error() string
+func (*DNSConfigError) Temporary
+
+func (e *DNSConfigError) Temporary() bool
+func (*DNSConfigError) Timeout
+
+func (e *DNSConfigError) Timeout() bool
+type DNSError
+type DNSError struct { Err string // 错误的描述 Name string // 查询的名称 Server string // 使用的服务器 IsTimeout bool }
+DNSError代表DNS查询的错误。
+
+func (*DNSError) Error
+
+func (e *DNSError) Error() string
+func (*DNSError) Temporary
+
+func (e *DNSError) Temporary() bool
+func (*DNSError) Timeout
+
+func (e *DNSError) Timeout() bool
+type AddrError
+type AddrError struct { Err string Addr string }
+func (*AddrError) Error
+
+func (e *AddrError) Error() string
+func (*AddrError) Temporary
+
+func (e *AddrError) Temporary() bool
+func (*AddrError) Timeout
+
+func (e *AddrError) Timeout() bool
+type OpError
+type OpError struct { // Op是出现错误的操作，如"read"或"write" Op string // Net是错误所在的网络类型，如"tcp"或"udp6" Net string // Addr是出现错误的网络地址 Addr Addr // Err是操作中出现的错误 Err error }
+OpError是经常被net包的函数返回的错误类型。它描述了该错误的操作、网络类型和网络地址。
+
+func (*OpError) Error
+
+func (e *OpError) Error() string
+func (*OpError) Temporary
+
+func (e *OpError) Temporary() bool
+func (*OpError) Timeout
+
+func (e *OpError) Timeout() bool
+func SplitHostPort
+func SplitHostPort(hostport string) (host, port string, err error)
+函数将格式为"host:port"、"[host]:port"或"[ipv6-host%zone]:port"的网络地址分割为host或ipv6-host%zone和port两个部分。Ipv6的文字地址或者主机名必须用方括号括起来，如"[::1]:80"、"[ipv6-host]:http"、"[ipv6-host%zone]:80"。
+
+func JoinHostPort
+func JoinHostPort(host, port string) string
+函数将host和port合并为一个网络地址。一般格式为"host:port"；如果host含有冒号或百分号，格式为"[host]:port"。
+
+type HardwareAddr
+type HardwareAddr []byte
+HardwareAddr类型代表一个硬件地址（MAC地址）。
+
+func ParseMAC
+
+func ParseMAC(s string) (hw HardwareAddr, err error)
+ParseMAC函数使用如下格式解析一个IEEE 802 MAC-48、EUI-48或EUI-64硬件地址：
+
+01:23:45:67:89:ab
+01:23:45:67:89:ab:cd:ef
+01-23-45-67-89-ab
+01-23-45-67-89-ab-cd-ef
+0123.4567.89ab
+0123.4567.89ab.cdef
+func (HardwareAddr) String
+
+func (a HardwareAddr) String() string
+type Flags
+type Flags uint
+const ( FlagUp Flags = 1 << iota // 接口在活动状态 FlagBroadcast // 接口支持广播 FlagLoopback // 接口是环回的 FlagPointToPoint // 接口是点对点的 FlagMulticast // 接口支持组播 )
+func (Flags) String
+
+func (f Flags) String() string
+type Interface
+type Interface struct { Index int // 索引，>=1的整数 MTU int // 最大传输单元 Name string // 接口名，例如"en0"、"lo0"、"eth0.100" HardwareAddr HardwareAddr // 硬件地址，IEEE MAC-48、EUI-48或EUI-64格式 Flags Flags // 接口的属性，例如FlagUp、FlagLoopback、FlagMulticast }
+Interface类型代表一个网络接口（系统与网络的一个接点）。包含接口索引到名字的映射，也包含接口的设备信息。
+
+func InterfaceByIndex
+
+func InterfaceByIndex(index int) (*Interface, error)
+InterfaceByIndex返回指定索引的网络接口。
+
+func InterfaceByName
+
+func InterfaceByName(name string) (*Interface, error)
+InterfaceByName返回指定名字的网络接口。
+
+func (*Interface) Addrs
+
+func (ifi *Interface) Addrs() ([]Addr, error)
+Addrs方法返回网络接口ifi的一或多个接口地址。
+
+func (*Interface) MulticastAddrs
+
+func (ifi *Interface) MulticastAddrs() ([]Addr, error)
+MulticastAddrs返回网络接口ifi加入的多播组地址。
+
+func Interfaces
+func Interfaces() ([]Interface, error)
+Interfaces返回该系统的网络接口列表。
+
+func InterfaceAddrs
+func InterfaceAddrs() ([]Addr, error)
+InterfaceAddrs返回该系统的网络接口的地址列表。
+
+type IP
+type IP []byte
+IP类型是代表单个IP地址的[]byte切片。本包的函数都可以接受4字节（IPv4）和16字节（IPv6）的切片作为输入。
+
+注意，IP地址是IPv4地址还是IPv6地址是语义上的属性，而不取决于切片的长度：16字节的切片也可以是IPv4地址。
+
+func IPv4
+
+func IPv4(a, b, c, d byte) IP
+IPv4返回包含一个IPv4地址a.b.c.d的IP地址（16字节格式）。
+
+func ParseIP
+
+func ParseIP(s string) IP
+ParseIP将s解析为IP地址，并返回该地址。如果s不是合法的IP地址文本表示，ParseIP会返回nil。
+
+字符串可以是小数点分隔的IPv4格式（如"74.125.19.99"）或IPv6格式（如"2001:4860:0:2001::68"）格式。
+
+func (IP) IsGlobalUnicast
+
+func (ip IP) IsGlobalUnicast() bool
+如果ip是全局单播地址，则返回真。
+
+func (IP) IsLinkLocalUnicast
+
+func (ip IP) IsLinkLocalUnicast() bool
+如果ip是链路本地单播地址，则返回真。
+
+func (IP) IsInterfaceLocalMulticast
+
+func (ip IP) IsInterfaceLocalMulticast() bool
+如果ip是接口本地组播地址，则返回真。
+
+func (IP) IsLinkLocalMulticast
+
+func (ip IP) IsLinkLocalMulticast() bool
+如果ip是链路本地组播地址，则返回真。
+
+func (IP) IsMulticast
+
+func (ip IP) IsMulticast() bool
+如果ip是组播地址，则返回真。
+
+func (IP) IsLoopback
+
+func (ip IP) IsLoopback() bool
+如果ip是环回地址，则返回真。
+
+func (IP) IsUnspecified
+
+func (ip IP) IsUnspecified() bool
+如果ip是未指定地址，则返回真。
+
+func (IP) DefaultMask
+
+func (ip IP) DefaultMask() IPMask
+函数返回IP地址ip的默认子网掩码。只有IPv4有默认子网掩码；如果ip不是合法的IPv4地址，会返回nil。
+
+func (IP) Equal
+
+func (ip IP) Equal(x IP) bool
+如果ip和x代表同一个IP地址，Equal会返回真。代表同一地址的IPv4地址和IPv6地址也被认为是相等的。
+
+func (IP) To16
+
+func (ip IP) To16() IP
+To16将一个IP地址转换为16字节表示。如果ip不是一个IP地址（长度错误），To16会返回nil。
+
+func (IP) To4
+
+func (ip IP) To4() IP
+To4将一个IPv4地址转换为4字节表示。如果ip不是IPv4地址，To4会返回nil。
+
+func (IP) Mask
+
+func (ip IP) Mask(mask IPMask) IP
+Mask方法认为mask为ip的子网掩码，返回ip的网络地址部分的ip。（主机地址部分都置0）
+
+func (IP) String
+
+func (ip IP) String() string
+String返回IP地址ip的字符串表示。如果ip是IPv4地址，返回值的格式为点分隔的，如"74.125.19.99"；否则表示为IPv6格式，如"2001:4860:0:2001::68"。
+
+func (IP) MarshalText
+
+func (ip IP) MarshalText() ([]byte, error)
+MarshalText实现了encoding.TextMarshaler接口，返回值和String方法一样。
+
+func (*IP) UnmarshalText
+
+func (ip *IP) UnmarshalText(text []byte) error
+UnmarshalText实现了encoding.TextUnmarshaler接口。IP地址字符串应该是ParseIP函数可以接受的格式。
+
+type IPMask
+type IPMask []byte
+IPMask代表一个IP地址的掩码。
+
+func IPv4Mask
+
+func IPv4Mask(a, b, c, d byte) IPMask
+IPv4Mask返回一个4字节格式的IPv4掩码a.b.c.d。
+
+func CIDRMask
+
+func CIDRMask(ones, bits int) IPMask
+CIDRMask返回一个IPMask类型值，该返回值总共有bits个字位，其中前ones个字位都是1，其余字位都是0。
+
+func (IPMask) Size
+
+func (m IPMask) Size() (ones, bits int)
+Size返回m的前导的1字位数和总字位数。如果m不是规范的子网掩码（字位：/^1+0+$/），将返会(0, 0)。
+
+func (IPMask) String
+
+func (m IPMask) String() string
+String返回m的十六进制格式，没有标点。
+
+type IPNet
+type IPNet struct { IP IP // 网络地址 Mask IPMask // 子网掩码 }
+IPNet表示一个IP网络。
+
+func ParseCIDR
+
+func ParseCIDR(s string) (IP, *IPNet, error)
+ParseCIDR将s作为一个CIDR（无类型域间路由）的IP地址和掩码字符串，如"192.168.100.1/24"或"2001:DB8::/48"，解析并返回IP地址和IP网络，参见RFC 4632和RFC 4291。
+
+本函数会返回IP地址和该IP所在的网络和掩码。例如，ParseCIDR("192.168.100.1/16")会返回IP地址192.168.100.1和IP网络192.168.0.0/16。
+
+func (*IPNet) Contains
+
+func (n *IPNet) Contains(ip IP) bool
+Contains报告该网络是否包含地址ip。
+
+func (*IPNet) Network
+
+func (n *IPNet) Network() string
+Network返回网络类型名："ip+net"，注意该类型名是不合法的。
+
+func (*IPNet) String
+
+func (n *IPNet) String() string
+String返回n的CIDR表示，如"192.168.100.1/24"或"2001:DB8::/48"，参见RFC 4632和RFC 4291。如果n的Mask字段不是规范格式，它会返回一个包含n.IP.String()、斜线、n.Mask.String()（此时表示为无标点十六进制格式）的字符串，如"192.168.100.1/c000ff00"。
+
+type Addr
+type Addr interface { Network() string // 网络名 String() string // 字符串格式的地址 }
+Addr代表一个网络终端地址。
+
+type Conn
+type Conn interface { // Read从连接中读取数据 // Read方法可能会在超过某个固定时间限制后超时返回错误，该错误的Timeout()方法返回真 Read(b []byte) (n int, err error) // Write从连接中写入数据 // Write方法可能会在超过某个固定时间限制后超时返回错误，该错误的Timeout()方法返回真 Write(b []byte) (n int, err error) // Close方法关闭该连接 // 并会导致任何阻塞中的Read或Write方法不再阻塞并返回错误 Close() error // 返回本地网络地址 LocalAddr() Addr // 返回远端网络地址 RemoteAddr() Addr // 设定该连接的读写deadline，等价于同时调用SetReadDeadline和SetWriteDeadline // deadline是一个绝对时间，超过该时间后I/O操作就会直接因超时失败返回而不会阻塞 // deadline对之后的所有I/O操作都起效，而不仅仅是下一次的读或写操作 // 参数t为零值表示不设置期限 SetDeadline(t time.Time) error // 设定该连接的读操作deadline，参数t为零值表示不设置期限 SetReadDeadline(t time.Time) error // 设定该连接的写操作deadline，参数t为零值表示不设置期限 // 即使写入超时，返回值n也可能>0，说明成功写入了部分数据 SetWriteDeadline(t time.Time) error }
+Conn接口代表通用的面向流的网络连接。多个线程可能会同时调用同一个Conn的方法。
+
+func Dial
+
+func Dial(network, address string) (Conn, error)
+在网络network上连接地址address，并返回一个Conn接口。可用的网络类型有：
+
+"tcp"、"tcp4"、"tcp6"

@@ -1,0 +1,25 @@
+go get github.com/golang/tools
+
+在GOPATH\src\github.com目录下就有tools文件夹。
+
+在src下和github.com平级新建golang.org文件下，在此文件夹下建x文件夹，然后将tools都复制进去。
+
+然后再执行go get github.com/tools/godep。
+
+此时godep安装在你的GOPATH\bin目录下。
+
+godep save,此时会生成Godeps文件夹
+
+godep go run main.go
+godep go build
+godep go install
+godep go test
+
+
+
+go get github.com/go-sql-driver/mysql
+
+
+
+
+go get github.com/alphazero/Go-Redis 

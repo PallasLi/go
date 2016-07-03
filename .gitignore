@@ -1,0 +1,7 @@
+
+pkg/*
+
+bin/godep
+
+src/github.com/*
+
